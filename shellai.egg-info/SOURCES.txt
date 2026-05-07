@@ -1,0 +1,13 @@
+README.md
+ai.py
+config.py
+confirm.py
+executor.py
+main.py
+setup.py
+shellai.egg-info/PKG-INFO
+shellai.egg-info/SOURCES.txt
+shellai.egg-info/dependency_links.txt
+shellai.egg-info/entry_points.txt
+shellai.egg-info/requires.txt
+shellai.egg-info/top_level.txt

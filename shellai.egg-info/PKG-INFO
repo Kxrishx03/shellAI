@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: shellai
+Version: 0.1.0
+Summary: Run tasks by describing them in plain English
+Author: Your Name
+Requires-Python: >=3.8
+Requires-Dist: requests
+Requires-Dist: colorama
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
