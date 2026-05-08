@@ -1,42 +1,38 @@
 import subprocess
 import os
-import sys
 from colorama import Fore, Style, init
 
 init(autoreset=True)
 
-
 def run_command(command: str, working_dir: str = None) -> tuple:
     """
     Run a single shell command.
-
-    Returns a tuple of (success, output, error):
-      success  — True if command exited with code 0
-      output   — the text the command printed to stdout
-      error    — the text the command printed to stderr
+    Returns (success, stdout_text, stderr_text).
+    success is True if the command exited with code 0.
     """
     try:
         result = subprocess.run(
             command,
-            shell=True,           # run through bash so cd, &&, etc. work
-            cwd=working_dir,      # which directory to run in
-            text=True,            # return strings instead of bytes
-            capture_output=True   # capture both stdout and stderr
+            shell=True,
+            cwd=working_dir,
+            text=True,
+            capture_output=True
         )
-
-        success = result.returncode == 0
-        return success, result.stdout, result.stderr
-
+        return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)
 
 
-def get_new_directory(command: str, current_dir: str) -> str:
+def extract_new_directory(command: str, current_dir: str) -> str:
     """
-    If a command contains 'cd something', return the new directory.
-    We need this because each subprocess call starts fresh —
-    a 'cd' command in one call doesn't affect the next call.
-    So we track directory changes ourselves.
+    If the command contains a cd instruction, return the new directory.
+    We handle compound commands like: mkdir foo && cd foo
+
+    Why is this needed?
+    subprocess.run() is stateless. Running 'cd /tmp' in a subprocess
+    changes the subprocess's directory, but that subprocess exits
+    immediately and the change is lost. We simulate the effect by
+    tracking the directory ourselves.
     """
     # Split on && and ; to handle compound commands
     parts = command.replace("&&", ";").split(";")
@@ -44,41 +40,31 @@ def get_new_directory(command: str, current_dir: str) -> str:
     for part in parts:
         part = part.strip()
         if part.startswith("cd "):
-            target = part[3:].strip()
+            target = part[3:].strip().strip('"').strip("'")
 
-            # Handle cd ~ (go home)
-            if target == "~" or target == "":
+            if target in ("", "~"):
                 return os.path.expanduser("~")
 
-            # Handle absolute paths
             if os.path.isabs(target):
                 return target
 
-            # Handle relative paths
             new_dir = os.path.join(current_dir, target)
             if os.path.isdir(new_dir):
                 return os.path.realpath(new_dir)
 
     return current_dir
 
-
 def run_all(commands: list, careful: bool = False) -> bool:
     """
-    Run a list of commands one by one.
+    Run a list of commands sequentially.
 
-    If careful=True, ask for confirmation before each command.
+    If careful=True, ask for confirmation before each individual command.
+    Prints clear output for each command including success/failure status.
     Returns True if all commands succeeded, False if any failed.
-
-    The 'working_dir' concept:
-    When you run 'cd my-app', the next command needs to run
-    inside my-app/. We track this with the working_dir variable.
     """
-    from confirm import ask_single_confirmation
-
-    # Start in the current directory
     working_dir = os.getcwd()
     total       = len(commands)
-    all_passed  = True
+    all_ok      = True
 
     print()
 
@@ -91,46 +77,44 @@ def run_all(commands: list, careful: bool = False) -> bool:
 
         # In careful mode, ask before each command
         if careful:
-            if not ask_single_confirmation(command):
-                print(f"  {Fore.YELLOW}skipped{Style.RESET_ALL}")
+            answer = input(
+                f"  Run: {Style.BRIGHT}{command}{Style.RESET_ALL}  "
+                f"[{Fore.GREEN}y{Style.RESET_ALL}/{Fore.YELLOW}s{Style.RESET_ALL}kip/{Fore.RED}n{Style.RESET_ALL}o]: "
+            ).strip().lower()
+
+            if answer in ("n", "no"):
+                print(f"\n{Fore.RED}Stopped.{Style.RESET_ALL}")
+                return False
+            if answer in ("s", "skip"):
+                print(f"  {Fore.YELLOW}Skipped{Style.RESET_ALL}\n")
                 continue
 
-        # Print what we're about to run
         print(
             f"[{i}/{total}] "
             f"{Fore.CYAN}running:{Style.RESET_ALL} "
             f"{Style.BRIGHT}{command}{Style.RESET_ALL}"
         )
 
-        # Run the command
-        success, output, error = run_command(command, working_dir)
+        success, stdout, stderr = run_command(command, working_dir)
 
-        # Print output if there is any
-        if output.strip():
-            # Indent each line of output for readability
-            for line in output.strip().split("\n"):
+        # Print output with indentation for readability
+        if stdout.strip():
+            for line in stdout.strip().split("\n"):
                 print(f"        {Style.DIM}{line}{Style.RESET_ALL}")
 
         if success:
             print(f"        {Fore.GREEN}✓ done{Style.RESET_ALL}")
-
-            # Update working directory if this was a cd command
-            working_dir = get_new_directory(command, working_dir)
-
+            working_dir = extract_new_directory(command, working_dir)
         else:
-            # Command failed — print the error
             print(f"        {Fore.RED}✗ failed{Style.RESET_ALL}")
-
-            if error.strip():
-                for line in error.strip().split("\n"):
+            if stderr.strip():
+                for line in stderr.strip().split("\n"):
                     print(f"        {Fore.RED}{line}{Style.RESET_ALL}")
 
-            all_passed = False
-
-            # Ask whether to continue after a failure
+            all_ok = False
             answer = input(
-                f"\n  Command failed. "
-                f"Continue anyway? [{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}n{Style.RESET_ALL}]: "
+                f"\n  Command failed. Continue anyway? "
+                f"[{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}n{Style.RESET_ALL}]: "
             ).strip().lower()
 
             if answer not in ("y", "yes"):
@@ -139,4 +123,4 @@ def run_all(commands: list, careful: bool = False) -> bool:
 
         print()
 
-    return all_passed
+    return all_ok

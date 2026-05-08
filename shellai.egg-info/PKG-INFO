@@ -1,12 +1,11 @@
 Metadata-Version: 2.4
 Name: shellai
 Version: 0.1.0
-Summary: Run tasks by describing them in plain English
-Author: Your Name
+Summary: Run developer tasks by describing them in plain English
 Requires-Python: >=3.8
 Requires-Dist: requests
 Requires-Dist: colorama
-Dynamic: author
+Requires-Dist: scikit-learn
 Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary

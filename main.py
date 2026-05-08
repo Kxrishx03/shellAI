@@ -1,46 +1,54 @@
 import sys
 from colorama import Fore, Style, init
-
-import config
 import ai
 import confirm
 import executor
+from profiles import get_profile, get_os_context, run_setup_wizard, save_profile
+from placeholders import process_placeholders
+from dataset_builder import run_review, count_pending
 
 init(autoreset=True)
 
+VERSION = "0.1.0"
+
 HELP_TEXT = """
-shellai — run tasks by describing them in plain English
+shellai — run developer tasks by describing them in plain English
 
 Usage:
   shellai <describe what you want to do>
   shellai --careful <describe what you want to do>
 
 Flags:
-  --careful    Ask for confirmation before each individual command
-  --help       Show this help message
-  --version    Show version
+  --careful              Confirm each command individually before it runs
+  --setup                Re-run the first-time setup wizard
+  --review               Review and approve pending dataset entries
+  --set-model <name>     Change the Ollama model  (e.g. phi3:mini, mistral:7b)
+  --help                 Show this help message
+  --version              Show version number
 
 Examples:
-  shellai initialize a react project with typescript and tailwind
-  shellai merge branch feature/login into main with message "add login"
-  shellai set up a PostgreSQL database called myapp
-  shellai find all node_modules folders and delete them
-  shellai --careful deploy to production using docker compose
+  shellai initialize a react project with typescript
+  shellai merge branch feature/login into main with message "add auth"
+  shellai set up postgresql and create a database called myapp
+  shellai --careful deploy using docker compose
 
-Config:
-  Add GEMINI_API_KEY=your_key to a .env file in the current directory
-  or to ~/.shellai
+How the local database grows automatically:
+  When shellai asks Ollama for an answer, it saves the response
+  to a pending queue. Run 'shellai --review' to approve good entries.
+  Approved entries join your local database — next time the same
+  task is asked, it is answered instantly with no model call needed.
 
-  Get a free key at: https://aistudio.google.com
+First time setup:
+  shellai will run a short wizard on first launch.
+  Make sure Ollama is installed and running:
+    curl -fsSL https://ollama.com/install.sh | sh
+    ollama pull phi3:mini
+    ollama serve &
 """
 
-VERSION = "0.1.0"
-
-
 def main():
-    args = sys.argv[1:]  # everything after "python3 main.py"
+    args = sys.argv[1:]
 
-    # Handle flags
     if not args or "--help" in args or "-h" in args:
         print(HELP_TEXT)
         sys.exit(0)
@@ -49,37 +57,54 @@ def main():
         print(f"shellai {VERSION}")
         sys.exit(0)
 
-    # Check for --careful flag
+    if "--setup" in args:
+        run_setup_wizard()
+        sys.exit(0)
+
+    if "--review" in args:
+        run_review()
+        sys.exit(0)
+
+    if "--set-model" in args:
+        idx = args.index("--set-model")
+        if idx + 1 >= len(args):
+            print(f"{Fore.RED}Usage: shellai --set-model phi3:mini{Style.RESET_ALL}")
+            sys.exit(1)
+        new_model = args[idx + 1]
+        profile   = get_profile()
+        profile["ollama_model"] = new_model
+        save_profile(profile)
+        print(f"{Fore.GREEN}Model set to: {new_model}{Style.RESET_ALL}")
+        print(f"{Style.DIM}Make sure it is downloaded:  ollama pull {new_model}{Style.RESET_ALL}")
+        sys.exit(0)
+
+
     careful = "--careful" in args
-    if careful:
-        args = [a for a in args if a != "--careful"]
+    args    = [a for a in args if not a.startswith("--")]
 
-    # Everything remaining is the user's intent
-    user_intent = " ".join(args)
+    user_intent = " ".join(args).strip()
 
-    if not user_intent.strip():
-        print(f"{Fore.RED}Error:{Style.RESET_ALL} Please describe what you want to do.")
-        print('Example: shellai initialize a new git repository')
+    if not user_intent:
+        print(f"{Fore.RED}Please describe what you want to do.{Style.RESET_ALL}")
+        print("Example:  shellai initialize a new git repository")
         sys.exit(1)
 
-    # Step 1: Check API key exists before making any request
-    if not config.get_api_key():
-        print(f"\n{Fore.RED}Error:{Style.RESET_ALL} No API key found.")
-        print("Add this to a .env file in your current directory:")
-        print(f"  {Style.BRIGHT}GEMINI_API_KEY=your_key_here{Style.RESET_ALL}")
-        print("\nGet a free key at: https://aistudio.google.com")
-        sys.exit(1)
-
-    # Step 2: Ask Gemini for commands
-    print(f"\n{Fore.YELLOW}⚡ Thinking...{Style.RESET_ALL}", end="", flush=True)
+   
+    profile      = get_profile()
+    os_context   = get_os_context(profile)
+    os_id        = profile.get("os_id", "ubuntu")
+    ollama_model = profile.get("ollama_model", "phi3:mini")
 
     try:
-        result = ai.get_commands(user_intent)
-    except (ValueError, ConnectionError, RuntimeError) as e:
+        result = ai.get_commands(
+            user_intent  = user_intent,
+            os_context   = os_context,
+            os_id        = os_id,
+            ollama_model = ollama_model
+        )
+    except (ConnectionError, ValueError, RuntimeError) as e:
         print(f"\n{Fore.RED}Error:{Style.RESET_ALL} {e}")
         sys.exit(1)
-
-    print(f"\r{' ' * 20}\r", end="")  # clear the "Thinking..." line
 
     commands = result.get("commands", [])
 
@@ -87,10 +112,11 @@ def main():
         print(f"{Fore.RED}No commands returned.{Style.RESET_ALL} Try rephrasing your request.")
         sys.exit(1)
 
-    # Step 3: Show the plan
-    confirm.show_plan(result)
+  
+    commands         = process_placeholders(commands)
+    result["commands"] = commands
 
-    # Step 4: Ask for confirmation
+    confirm.show_plan(result)
     decision = confirm.ask_confirmation(len(commands))
 
     if decision == "no":
@@ -102,13 +128,9 @@ def main():
         if not commands:
             print(f"\n{Fore.YELLOW}Nothing selected. Cancelled.{Style.RESET_ALL}")
             sys.exit(0)
-        # Update result with filtered commands
-        result["commands"] = commands
 
-    # Step 5: Run the commands
     success = executor.run_all(commands, careful=careful)
 
-    # Step 6: Final summary
     if success:
         print(f"{Fore.GREEN}All done!{Style.RESET_ALL}")
     else:

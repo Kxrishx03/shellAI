@@ -2,8 +2,13 @@ README.md
 ai.py
 config.py
 confirm.py
+dataset_builder.py
 executor.py
+local_engine.py
 main.py
+ollama_engine.py
+placeholders.py
+profiles.py
 setup.py
 shellai.egg-info/PKG-INFO
 shellai.egg-info/SOURCES.txt

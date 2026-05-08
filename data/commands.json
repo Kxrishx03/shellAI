@@ -1,0 +1,331 @@
+[
+  {
+    "intent": "initialize a new git repository",
+    "tags": ["git", "init", "setup", "version control", "new project"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "git init",
+        "explanation": "Creates a new empty git repository in the current directory"
+      },
+      {
+        "command": "git add .",
+        "explanation": "Stages all existing files for the first commit"
+      },
+      {
+        "command": "git commit -m \"{{COMMIT_MESSAGE}}\"",
+        "explanation": "Creates the first commit with your message"
+      }
+    ],
+    "summary": "Initialize a new git repository and make the first commit"
+  },
+  {
+    "intent": "configure git username and email",
+    "tags": ["git", "config", "username", "email", "identity", "setup"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "git config --global user.name \"{{YOUR_NAME}}\"",
+        "explanation": "Sets your name for all git commits on this machine"
+      },
+      {
+        "command": "git config --global user.email \"{{YOUR_EMAIL}}\"",
+        "explanation": "Sets your email for all git commits on this machine"
+      }
+    ],
+    "summary": "Configure your global git identity"
+  },
+  {
+    "intent": "create and switch to a new git branch",
+    "tags": ["git", "branch", "checkout", "feature branch", "new branch"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "git checkout -b {{BRANCH_NAME}}",
+        "explanation": "Creates a new branch and switches to it immediately"
+      }
+    ],
+    "summary": "Create a new git branch and switch to it"
+  },
+  {
+    "intent": "merge a branch into main",
+    "tags": ["git", "merge", "main", "branch", "pull request"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "git checkout main",
+        "explanation": "Switch to the main branch first"
+      },
+      {
+        "command": "git merge {{BRANCH_NAME}}",
+        "explanation": "Merge the specified branch into main"
+      },
+      {
+        "command": "git push origin main",
+        "explanation": "Push the merged result to the remote repository"
+      }
+    ],
+    "summary": "Merge a feature branch into main and push to remote"
+  },
+  {
+    "intent": "initialize a react project",
+    "tags": ["react", "create-react-app", "frontend", "javascript", "npm"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "npx create-react-app {{PROJECT_NAME}}",
+        "explanation": "Creates a new React project with all configuration included"
+      },
+      {
+        "command": "cd {{PROJECT_NAME}}",
+        "explanation": "Enter the newly created project folder"
+      },
+      {
+        "command": "npm start",
+        "explanation": "Start the development server on localhost:3000"
+      }
+    ],
+    "summary": "Create a new React project and start the development server"
+  },
+  {
+    "intent": "initialize a react project with typescript",
+    "tags": ["react", "typescript", "tsx", "frontend", "npm", "create-react-app"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "npx create-react-app {{PROJECT_NAME}} --template typescript",
+        "explanation": "Creates a new React project with TypeScript pre-configured"
+      },
+      {
+        "command": "cd {{PROJECT_NAME}}",
+        "explanation": "Enter the project folder"
+      },
+      {
+        "command": "npm start",
+        "explanation": "Start the development server"
+      }
+    ],
+    "summary": "Create a new React + TypeScript project"
+  },
+  {
+    "intent": "install tailwind css",
+    "tags": ["tailwind", "css", "styling", "postcss", "npm"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "npm install -D tailwindcss postcss autoprefixer",
+        "explanation": "Install Tailwind CSS and its required build tools"
+      },
+      {
+        "command": "npx tailwindcss init -p",
+        "explanation": "Generate tailwind.config.js and postcss.config.js"
+      }
+    ],
+    "summary": "Add Tailwind CSS to an existing project"
+  },
+  {
+    "intent": "create a python virtual environment",
+    "tags": ["python", "venv", "virtualenv", "pip", "environment", "isolate"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "python3 -m venv venv",
+        "explanation": "Creates a virtual environment in a folder called venv"
+      },
+      {
+        "command": "source venv/bin/activate",
+        "explanation": "Activates the virtual environment"
+      },
+      {
+        "command": "pip install --upgrade pip",
+        "explanation": "Upgrades pip to the latest version inside the environment"
+      }
+    ],
+    "summary": "Create and activate a Python virtual environment"
+  },
+  {
+    "intent": "install python packages from requirements file",
+    "tags": ["python", "pip", "requirements", "install", "dependencies"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "pip install -r requirements.txt",
+        "explanation": "Installs all packages listed in requirements.txt"
+      }
+    ],
+    "summary": "Install all Python dependencies from requirements.txt"
+  },
+  {
+    "intent": "create a new node project",
+    "tags": ["node", "npm", "init", "javascript", "package.json", "backend"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "mkdir {{PROJECT_NAME}} && cd {{PROJECT_NAME}}",
+        "explanation": "Create and enter the project folder"
+      },
+      {
+        "command": "npm init -y",
+        "explanation": "Initialize npm with default settings, creates package.json"
+      }
+    ],
+    "summary": "Create a new Node.js project"
+  },
+  {
+    "intent": "install postgresql on ubuntu",
+    "tags": ["postgresql", "postgres", "database", "install", "apt", "sql"],
+    "os": "ubuntu",
+    "commands": [
+      {
+        "command": "sudo apt update",
+        "explanation": "Refresh the package list before installing"
+      },
+      {
+        "command": "sudo apt install -y postgresql postgresql-contrib",
+        "explanation": "Install PostgreSQL and additional useful utilities"
+      },
+      {
+        "command": "sudo systemctl start postgresql",
+        "explanation": "Start the PostgreSQL service"
+      },
+      {
+        "command": "sudo systemctl enable postgresql",
+        "explanation": "Make PostgreSQL start automatically on system boot"
+      }
+    ],
+    "summary": "Install and start PostgreSQL on Ubuntu"
+  },
+  {
+    "intent": "install postgresql on macos",
+    "tags": ["postgresql", "postgres", "database", "install", "brew", "homebrew"],
+    "os": "macos",
+    "commands": [
+      {
+        "command": "brew install postgresql@15",
+        "explanation": "Install PostgreSQL version 15 via Homebrew"
+      },
+      {
+        "command": "brew services start postgresql@15",
+        "explanation": "Start PostgreSQL and enable it on login"
+      }
+    ],
+    "summary": "Install and start PostgreSQL on macOS"
+  },
+  {
+    "intent": "create a postgresql database",
+    "tags": ["postgresql", "postgres", "database", "create", "createdb"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "createdb {{DATABASE_NAME}}",
+        "explanation": "Creates a new PostgreSQL database with the given name"
+      }
+    ],
+    "summary": "Create a new PostgreSQL database"
+  },
+  {
+    "intent": "build a docker image",
+    "tags": ["docker", "image", "build", "container", "dockerfile"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "docker build -t {{IMAGE_NAME}} .",
+        "explanation": "Build a Docker image from the Dockerfile in the current directory"
+      }
+    ],
+    "summary": "Build a Docker image from the current directory"
+  },
+  {
+    "intent": "run docker compose",
+    "tags": ["docker", "compose", "containers", "services", "up", "start"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "docker compose up -d",
+        "explanation": "Start all services defined in docker-compose.yml in the background"
+      },
+      {
+        "command": "docker compose logs -f",
+        "explanation": "Follow live logs from all running containers"
+      }
+    ],
+    "summary": "Start Docker Compose services and tail the logs"
+  },
+  {
+    "intent": "stop docker compose containers",
+    "tags": ["docker", "compose", "stop", "down", "containers"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "docker compose down",
+        "explanation": "Stop and remove all containers defined in docker-compose.yml"
+      }
+    ],
+    "summary": "Stop all Docker Compose containers"
+  },
+  {
+    "intent": "generate ssh key pair",
+    "tags": ["ssh", "key", "keygen", "github", "authentication", "security"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "ssh-keygen -t ed25519 -C \"{{YOUR_EMAIL}}\"",
+        "explanation": "Generate a new SSH key using the modern ed25519 algorithm"
+      },
+      {
+        "command": "eval \"$(ssh-agent -s)\"",
+        "explanation": "Start the SSH agent in the background"
+      },
+      {
+        "command": "ssh-add ~/.ssh/id_ed25519",
+        "explanation": "Register your new key with the SSH agent"
+      },
+      {
+        "command": "cat ~/.ssh/id_ed25519.pub",
+        "explanation": "Print your public key — copy this and paste it into GitHub settings"
+      }
+    ],
+    "summary": "Generate an SSH key pair ready for use with GitHub"
+  },
+  {
+    "intent": "find process using a port and kill it",
+    "tags": ["port", "process", "kill", "lsof", "network", "pid"],
+    "os": "ubuntu",
+    "commands": [
+      {
+        "command": "sudo lsof -i :{{PORT_NUMBER}}",
+        "explanation": "Show which process is currently using the specified port"
+      },
+      {
+        "command": "sudo kill -9 $(sudo lsof -t -i :{{PORT_NUMBER}})",
+        "explanation": "Forcefully kill the process using the port",
+        "warning": "This terminates the process immediately without cleanup — save your work first"
+      }
+    ],
+    "summary": "Find and kill the process running on a specific port"
+  },
+  {
+    "intent": "compress a folder to tar gz",
+    "tags": ["tar", "compress", "archive", "gz", "zip", "backup", "folder"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "tar -czf {{ARCHIVE_NAME}}.tar.gz {{FOLDER_NAME}}",
+        "explanation": "Compress the folder into a .tar.gz archive"
+      }
+    ],
+    "summary": "Create a compressed .tar.gz archive from a folder"
+  },
+  {
+    "intent": "check which process is using a port",
+    "tags": ["port", "lsof", "network", "process", "listening"],
+    "os": "all",
+    "commands": [
+      {
+        "command": "sudo lsof -i :{{PORT_NUMBER}}",
+        "explanation": "List processes listening on the specified port"
+      }
+    ],
+    "summary": "Show which process is using a specific port"
+  }
+]
