@@ -1,7 +1,13 @@
 [
   {
     "intent": "initialize a new git repository",
-    "tags": ["git", "init", "setup", "version control", "new project"],
+    "tags": [
+      "git",
+      "init",
+      "setup",
+      "version control",
+      "new project"
+    ],
     "os": "all",
     "commands": [
       {
@@ -21,7 +27,14 @@
   },
   {
     "intent": "configure git username and email",
-    "tags": ["git", "config", "username", "email", "identity", "setup"],
+    "tags": [
+      "git",
+      "config",
+      "username",
+      "email",
+      "identity",
+      "setup"
+    ],
     "os": "all",
     "commands": [
       {
@@ -37,7 +50,13 @@
   },
   {
     "intent": "create and switch to a new git branch",
-    "tags": ["git", "branch", "checkout", "feature branch", "new branch"],
+    "tags": [
+      "git",
+      "branch",
+      "checkout",
+      "feature branch",
+      "new branch"
+    ],
     "os": "all",
     "commands": [
       {
@@ -49,7 +68,13 @@
   },
   {
     "intent": "merge a branch into main",
-    "tags": ["git", "merge", "main", "branch", "pull request"],
+    "tags": [
+      "git",
+      "merge",
+      "main",
+      "branch",
+      "pull request"
+    ],
     "os": "all",
     "commands": [
       {
@@ -69,7 +94,13 @@
   },
   {
     "intent": "initialize a react project",
-    "tags": ["react", "create-react-app", "frontend", "javascript", "npm"],
+    "tags": [
+      "react",
+      "create-react-app",
+      "frontend",
+      "javascript",
+      "npm"
+    ],
     "os": "all",
     "commands": [
       {
@@ -89,7 +120,14 @@
   },
   {
     "intent": "initialize a react project with typescript",
-    "tags": ["react", "typescript", "tsx", "frontend", "npm", "create-react-app"],
+    "tags": [
+      "react",
+      "typescript",
+      "tsx",
+      "frontend",
+      "npm",
+      "create-react-app"
+    ],
     "os": "all",
     "commands": [
       {
@@ -109,7 +147,13 @@
   },
   {
     "intent": "install tailwind css",
-    "tags": ["tailwind", "css", "styling", "postcss", "npm"],
+    "tags": [
+      "tailwind",
+      "css",
+      "styling",
+      "postcss",
+      "npm"
+    ],
     "os": "all",
     "commands": [
       {
@@ -125,7 +169,14 @@
   },
   {
     "intent": "create a python virtual environment",
-    "tags": ["python", "venv", "virtualenv", "pip", "environment", "isolate"],
+    "tags": [
+      "python",
+      "venv",
+      "virtualenv",
+      "pip",
+      "environment",
+      "isolate"
+    ],
     "os": "all",
     "commands": [
       {
@@ -145,7 +196,13 @@
   },
   {
     "intent": "install python packages from requirements file",
-    "tags": ["python", "pip", "requirements", "install", "dependencies"],
+    "tags": [
+      "python",
+      "pip",
+      "requirements",
+      "install",
+      "dependencies"
+    ],
     "os": "all",
     "commands": [
       {
@@ -157,7 +214,14 @@
   },
   {
     "intent": "create a new node project",
-    "tags": ["node", "npm", "init", "javascript", "package.json", "backend"],
+    "tags": [
+      "node",
+      "npm",
+      "init",
+      "javascript",
+      "package.json",
+      "backend"
+    ],
     "os": "all",
     "commands": [
       {
@@ -173,7 +237,14 @@
   },
   {
     "intent": "install postgresql on ubuntu",
-    "tags": ["postgresql", "postgres", "database", "install", "apt", "sql"],
+    "tags": [
+      "postgresql",
+      "postgres",
+      "database",
+      "install",
+      "apt",
+      "sql"
+    ],
     "os": "ubuntu",
     "commands": [
       {
@@ -197,7 +268,14 @@
   },
   {
     "intent": "install postgresql on macos",
-    "tags": ["postgresql", "postgres", "database", "install", "brew", "homebrew"],
+    "tags": [
+      "postgresql",
+      "postgres",
+      "database",
+      "install",
+      "brew",
+      "homebrew"
+    ],
     "os": "macos",
     "commands": [
       {
@@ -213,7 +291,13 @@
   },
   {
     "intent": "create a postgresql database",
-    "tags": ["postgresql", "postgres", "database", "create", "createdb"],
+    "tags": [
+      "postgresql",
+      "postgres",
+      "database",
+      "create",
+      "createdb"
+    ],
     "os": "all",
     "commands": [
       {
@@ -225,7 +309,13 @@
   },
   {
     "intent": "build a docker image",
-    "tags": ["docker", "image", "build", "container", "dockerfile"],
+    "tags": [
+      "docker",
+      "image",
+      "build",
+      "container",
+      "dockerfile"
+    ],
     "os": "all",
     "commands": [
       {
@@ -237,7 +327,14 @@
   },
   {
     "intent": "run docker compose",
-    "tags": ["docker", "compose", "containers", "services", "up", "start"],
+    "tags": [
+      "docker",
+      "compose",
+      "containers",
+      "services",
+      "up",
+      "start"
+    ],
     "os": "all",
     "commands": [
       {
@@ -253,7 +350,13 @@
   },
   {
     "intent": "stop docker compose containers",
-    "tags": ["docker", "compose", "stop", "down", "containers"],
+    "tags": [
+      "docker",
+      "compose",
+      "stop",
+      "down",
+      "containers"
+    ],
     "os": "all",
     "commands": [
       {
@@ -265,7 +368,14 @@
   },
   {
     "intent": "generate ssh key pair",
-    "tags": ["ssh", "key", "keygen", "github", "authentication", "security"],
+    "tags": [
+      "ssh",
+      "key",
+      "keygen",
+      "github",
+      "authentication",
+      "security"
+    ],
     "os": "all",
     "commands": [
       {
@@ -282,14 +392,21 @@
       },
       {
         "command": "cat ~/.ssh/id_ed25519.pub",
-        "explanation": "Print your public key — copy this and paste it into GitHub settings"
+        "explanation": "Print your public key \u2014 copy this and paste it into GitHub settings"
       }
     ],
     "summary": "Generate an SSH key pair ready for use with GitHub"
   },
   {
     "intent": "find process using a port and kill it",
-    "tags": ["port", "process", "kill", "lsof", "network", "pid"],
+    "tags": [
+      "port",
+      "process",
+      "kill",
+      "lsof",
+      "network",
+      "pid"
+    ],
     "os": "ubuntu",
     "commands": [
       {
@@ -299,14 +416,22 @@
       {
         "command": "sudo kill -9 $(sudo lsof -t -i :{{PORT_NUMBER}})",
         "explanation": "Forcefully kill the process using the port",
-        "warning": "This terminates the process immediately without cleanup — save your work first"
+        "warning": "This terminates the process immediately without cleanup \u2014 save your work first"
       }
     ],
     "summary": "Find and kill the process running on a specific port"
   },
   {
     "intent": "compress a folder to tar gz",
-    "tags": ["tar", "compress", "archive", "gz", "zip", "backup", "folder"],
+    "tags": [
+      "tar",
+      "compress",
+      "archive",
+      "gz",
+      "zip",
+      "backup",
+      "folder"
+    ],
     "os": "all",
     "commands": [
       {
@@ -318,7 +443,13 @@
   },
   {
     "intent": "check which process is using a port",
-    "tags": ["port", "lsof", "network", "process", "listening"],
+    "tags": [
+      "port",
+      "lsof",
+      "network",
+      "process",
+      "listening"
+    ],
     "os": "all",
     "commands": [
       {
@@ -327,5 +458,39 @@
       }
     ],
     "summary": "Show which process is using a specific port"
+  },
+  {
+    "intent": "how to list all files",
+    "tags": [
+      "list",
+      "files"
+    ],
+    "os": "ubuntu",
+    "commands": [
+      {
+        "command": "ls -la",
+        "explanation": "Lists all files with detailed information"
+      }
+    ],
+    "summary": "Displays a comprehensive listing of all files and directories"
+  },
+  {
+    "intent": "create a file",
+    "tags": [
+      "create",
+      "file"
+    ],
+    "os": "ubuntu",
+    "commands": [
+      {
+        "command": "touch {{FILE_NAME}}",
+        "explanation": "Creates an empty file"
+      },
+      {
+        "command": "",
+        "explanation": ""
+      }
+    ],
+    "summary": "Create a new, empty file"
   }
 ]
