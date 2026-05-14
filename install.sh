@@ -72,7 +72,7 @@ if [ -d "$INSTALL_DIR" ]; then
     cd "$INSTALL_DIR"
     git pull origin main
 else
-    git clone https://github.com/yourusername/shellai.git "$INSTALL_DIR"
+    git clone https://github.com/Kxrishx03/shellai.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 

@@ -104,7 +104,7 @@ You type:   shellai initialize a react project with typescript
 ### One-line install (recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Kxrishx03/shellai/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Kxrishx03/shellai/master/install.sh | bash
 ```
 
 This single command will:
