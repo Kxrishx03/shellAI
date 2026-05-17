@@ -1,10 +1,13 @@
 import requests
 import json
+import threading
+import itertools
+import time
+import sys
 from colorama import Fore, Style, init
 from config import OLLAMA_BASE_URL, MAX_COMMANDS
 
 init(autoreset=True)
-
 
 SYSTEM_PROMPT = """You are an expert shell command assistant embedded in a terminal.
 The user will describe a developer task in plain English.
@@ -15,27 +18,22 @@ The JSON must have exactly this structure:
   "commands": [
     {
       "command": "the exact shell command to run",
-      "explanation": "one short sentence explaining what this command does"
+      "explanation": "one short sentence explaining what this does"
     }
   ],
   "summary": "one sentence describing what these commands accomplish overall"
 }
 
-IMPORTANT — placeholders:
-When a command needs a value personal to the user (name, email, project name,
-database name, branch name, port, password, server address etc) use a placeholder
-written in ALLCAPS inside double curly braces.
+IMPORTANT rules:
+- When a command needs a value personal to the user (name, email, project name,
+  database name, branch name, port, password, server address etc) use a placeholder
+  written in ALLCAPS inside double curly braces like {{YOUR_NAME}} or {{PROJECT_NAME}}
+- Never invent fake values — always use placeholders for personal information
+- If a command could cause data loss or is irreversible, add a "warning" field to that command
+- Generate commands appropriate for the system info provided
+- If git is already initialized (shown in environment context), never include git init
 
-Correct placeholder examples:
-  git config --global user.name "{{YOUR_NAME}}"
-  createdb {{DATABASE_NAME}}
-  git checkout -b {{BRANCH_NAME}}
-  docker build -t {{IMAGE_NAME}} .
-
-Never invent fake values like "myproject" or "johndoe". Always use placeholders.
-If a command could cause data loss or is irreversible, add a "warning" field.
-
-Example of a complete correct response:
+Example of a correct response:
 {
   "commands": [
     {"command": "git init", "explanation": "Creates a new empty git repository"},
@@ -47,11 +45,7 @@ Example of a complete correct response:
 
 
 def is_ollama_running() -> bool:
-    """
-    Check if the Ollama server is running.
-    We do this before making any model requests so we can give
-    a clear error message instead of a cryptic connection error.
-    """
+    """Check if Ollama server is reachable."""
     try:
         resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
         return resp.status_code == 200
@@ -60,15 +54,11 @@ def is_ollama_running() -> bool:
 
 
 def get_available_models() -> list:
-    """
-    Ask Ollama which models are downloaded and ready to use.
-    Returns a list of model name strings like ["phi3:mini", "mistral:7b"]
-    """
+    """Return list of downloaded model names."""
     try:
         resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
         if resp.status_code == 200:
-            models = resp.json().get("models", [])
-            return [m["name"] for m in models]
+            return [m["name"] for m in resp.json().get("models", [])]
     except Exception:
         pass
     return []
@@ -76,132 +66,152 @@ def get_available_models() -> list:
 
 def clean_json_response(raw: str) -> str:
     """
-    Extract clean JSON from a model response that may contain
-    extra text, markdown fences, or other noise.
-
-    Strategy:
-    1. Strip whitespace
-    2. Remove markdown code fences if present (```json ... ```)
-    3. Find the first { and last } to extract just the JSON object
-       This handles cases where the model adds text before or after
+    Strip markdown fences and extract just the JSON object.
+    Local models sometimes wrap JSON in code blocks even when
+    told not to. This handles all those cases.
     """
     raw = raw.strip()
 
     if raw.startswith("```"):
         lines = raw.split("\n")
-        # Remove first line (```json or ```) and last line (```)
         raw = "\n".join(lines[1:-1]).strip()
 
-    
     start = raw.find("{")
-    end   = raw.rfind("}")
+    end = raw.rfind("}")
 
     if start != -1 and end != -1 and end > start:
-        raw = raw[start : end + 1]
+        raw = raw[start:end + 1]
 
     return raw
 
 
+def _spinner(label: str, stop_event: threading.Event):
+    """Animated spinner shown while waiting for first token."""
+    frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    for f in itertools.cycle(frames):
+        if stop_event.is_set():
+            break
+        sys.stdout.write(f"\r  {f}  {label}...")
+        sys.stdout.flush()
+        time.sleep(0.08)
+    sys.stdout.write(f"\r{' ' * 40}\r")
+    sys.stdout.flush()
+
+
 def get_commands_ollama(
     user_intent: str,
-    os_context:  str = "Ubuntu Linux",
-    model:       str = "phi3:mini"
+    os_context: str = "Ubuntu Linux",
+    model: str = "phi3:mini",
+    extra_context: str = ""
 ) -> dict:
     """
-    Send a task description to the local Ollama model and return
-    structured commands.
-
-    Returns a dict with 'commands', 'summary', and 'source' fields.
-    The 'source' field tells the caller where the answer came from.
-    Raises exceptions with helpful messages if anything goes wrong.
+    Send a task to Ollama and stream the response back.
+    Raises ConnectionError, ValueError, or RuntimeError with
+    clear messages the user can act on.
     """
-
     if not is_ollama_running():
         raise ConnectionError(
             "Ollama is not running.\n"
-            "Start it with:  ollama serve\n"
-            "Or in the background:  ollama serve &"
+            "  Start it with:  ollama serve &"
         )
 
     available = get_available_models()
     if available and model not in available:
-        # Model not found — suggest the first available one
         suggestion = available[0] if available else "phi3:mini"
         raise ValueError(
             f"Model '{model}' is not downloaded.\n"
-            f"Pull it with:  ollama pull {model}\n"
-            f"Or switch to an available model:  shellai --set-model {suggestion}"
+            f"  Pull it with:  ollama pull {model}\n"
+            f"  Or switch:     shellai --set-model {suggestion}"
         )
 
-   
-    full_prompt = (
-        SYSTEM_PROMPT
-        + f"\n\nSystem info: {os_context}"
-        + f"\n\nUser task: {user_intent}"
-    )
+    full_prompt = SYSTEM_PROMPT
+    if extra_context:
+        full_prompt += f"\n\nCurrent environment:\n{extra_context}"
+    full_prompt += f"\n\nSystem info: {os_context}"
+    full_prompt += f"\n\nUser task: {user_intent}"
 
     request_body = {
-        "model":  model,
-        "prompt": full_prompt,
-        "stream": False,      
+        "model":   model,
+        "prompt":  full_prompt,
+        "stream":  True,
         "options": {
-            "temperature": 0.1, # low = predictable, which we want for commands
-            "num_predict": 512  # max tokens in response
+            "temperature": 0.1,
+            "num_predict": 512
         }
     }
 
-    print(
-        f"\n{Fore.CYAN}⚡ Asking {model}...{Style.RESET_ALL}",
-        end="",
-        flush=True
+    # Start spinner while connection is being established
+    stop_spinner = threading.Event()
+    spinner_thread = threading.Thread(
+        target=_spinner,
+        args=("Thinking", stop_spinner),
+        daemon=True
     )
+    spinner_thread.start()
+
+    full_response = ""
+    first_token = True
 
     try:
         response = requests.post(
             f"{OLLAMA_BASE_URL}/api/generate",
             json=request_body,
-            timeout=90  
+            stream=True,
+            timeout=90
         )
+
+        for line in response.iter_lines():
+            if not line:
+                continue
+
+            chunk = json.loads(line)
+            token = chunk.get("response", "")
+
+            if token:
+                if first_token:
+                    # Stop spinner on first token so output is clean
+                    stop_spinner.set()
+                    spinner_thread.join()
+                    first_token = False
+
+                print(token, end="", flush=True)
+                full_response += token
+
+            if chunk.get("done", False):
+                break
+
     except requests.exceptions.Timeout:
-        raise ConnectionError(
-            "Ollama timed out. The model may still be loading.\n"
-            "Wait a few seconds and try again."
-        )
+        stop_spinner.set()
+        raise ConnectionError("Ollama timed out. The model may still be loading — try again.")
     except requests.exceptions.ConnectionError:
-        raise ConnectionError(
-            "Lost connection to Ollama.\n"
-            "Make sure it is still running:  ollama serve"
-        )
+        stop_spinner.set()
+        raise ConnectionError("Lost connection to Ollama.\n  Check it is running: ollama serve &")
+    except Exception as e:
+        stop_spinner.set()
+        raise RuntimeError(f"Unexpected error: {e}")
+    finally:
+        stop_spinner.set()
+        spinner_thread.join()
 
-    print(f"\r{' ' * 50}\r", end="")
+    print("\n")
 
-    if response.status_code != 200:
-        raise RuntimeError(
-            f"Ollama returned error {response.status_code}:\n{response.text[:200]}"
-        )
-
-    raw_text = response.json().get("response", "")
-    raw_text = clean_json_response(raw_text)
+    raw = clean_json_response(full_response)
 
     try:
-        result = json.loads(raw_text)
+        result = json.loads(raw)
     except json.JSONDecodeError as e:
         raise ValueError(
-            f"Model returned invalid JSON: {e}\n"
-            f"Raw response:\n{raw_text[:300]}\n\n"
-            f"Tip: larger models follow JSON format more reliably.\n"
-            f"Try:  shellai --set-model mistral:7b"
+            f"Model returned malformed JSON.\n"
+            f"  Try a larger model: shellai --set-model mistral:7b\n"
+            f"  Raw output: {raw[:150]}"
         )
 
-    # Validate the structure we expect
     if "commands" not in result:
         raise ValueError(
-            "Model response is missing the 'commands' field.\n"
-            "The model may not have followed the format.\n"
-            "Try rephrasing your request or switching to a larger model."
+            "Model did not return commands.\n"
+            "  Try rephrasing your request or use: shellai --set-model mistral:7b"
         )
 
     result["commands"] = result["commands"][:MAX_COMMANDS]
-    result["source"]   = f"ollama:{model}"
-
+    result["source"] = f"ollama:{model}"
     return result

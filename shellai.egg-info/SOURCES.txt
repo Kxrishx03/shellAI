@@ -3,12 +3,16 @@ ai.py
 config.py
 confirm.py
 dataset_builder.py
+db.py
+display.py
 executor.py
+intent.py
 local_engine.py
 main.py
 ollama_engine.py
 placeholders.py
 profiles.py
+safety.py
 setup.py
 shellai.egg-info/PKG-INFO
 shellai.egg-info/SOURCES.txt

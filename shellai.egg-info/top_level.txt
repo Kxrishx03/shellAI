@@ -2,9 +2,13 @@ ai
 config
 confirm
 dataset_builder
+db
+display
 executor
+intent
 local_engine
 main
 ollama_engine
 placeholders
 profiles
+safety

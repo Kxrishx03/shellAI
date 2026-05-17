@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name        = "shellai",
@@ -19,8 +19,13 @@ setup(
     py_modules = [
         "main", "ai", "ollama_engine", "local_engine",
         "placeholders", "profiles", "confirm",
-        "executor", "config", "dataset_builder"
+        "executor", "config", "dataset_builder",
+        # ── previously missing ──────────────────
+        "db",
+        "display",
+        "safety",
+        "intent",
     ],
-    package_data = {"": ["data/*.json"]},
+    package_data = {"": ["data/*.json", "data/*.sql"]},
     include_package_data = True,
 )

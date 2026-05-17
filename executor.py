@@ -1,14 +1,19 @@
 import subprocess
 import os
 from colorama import Fore, Style, init
+from display import (
+    show_running, show_command_ok, show_command_fail,
+    show_command_output, ask_continue_after_failure
+)
 
 init(autoreset=True)
 
+
 def run_command(command: str, working_dir: str = None) -> tuple:
     """
-    Run a single shell command.
-    Returns (success, stdout_text, stderr_text).
-    success is True if the command exited with code 0.
+    Run a single shell command via bash.
+    Returns (success, stdout, stderr).
+    shell=True is required for cd, pipes, &&, env vars to work.
     """
     try:
         result = subprocess.run(
@@ -26,15 +31,8 @@ def run_command(command: str, working_dir: str = None) -> tuple:
 def extract_new_directory(command: str, current_dir: str) -> str:
     """
     If the command contains a cd instruction, return the new directory.
-    We handle compound commands like: mkdir foo && cd foo
-
-    Why is this needed?
-    subprocess.run() is stateless. Running 'cd /tmp' in a subprocess
-    changes the subprocess's directory, but that subprocess exits
-    immediately and the change is lost. We simulate the effect by
-    tracking the directory ourselves.
+    Handles compound commands like: mkdir foo && cd foo
     """
-    # Split on && and ; to handle compound commands
     parts = command.replace("&&", ";").split(";")
 
     for part in parts:
@@ -54,73 +52,50 @@ def extract_new_directory(command: str, current_dir: str) -> str:
 
     return current_dir
 
+
 def run_all(commands: list, careful: bool = False) -> bool:
     """
     Run a list of commands sequentially.
-
-    If careful=True, ask for confirmation before each individual command.
-    Prints clear output for each command including success/failure status.
-    Returns True if all commands succeeded, False if any failed.
+    If careful=True, asks for confirmation before each command.
+    Returns True if all commands succeeded.
     """
     working_dir = os.getcwd()
-    total       = len(commands)
-    all_ok      = True
+    total = len(commands)
+    all_ok = True
 
     print()
 
     for i, cmd_obj in enumerate(commands, 1):
-        command     = cmd_obj.get("command", "")
-        explanation = cmd_obj.get("explanation", "")
-
+        command = cmd_obj.get("command", "")
         if not command:
             continue
 
-        # In careful mode, ask before each command
         if careful:
             answer = input(
                 f"  Run: {Style.BRIGHT}{command}{Style.RESET_ALL}  "
-                f"[{Fore.GREEN}y{Style.RESET_ALL}/{Fore.YELLOW}s{Style.RESET_ALL}kip/{Fore.RED}n{Style.RESET_ALL}o]: "
+                f"[{Fore.GREEN}y{Style.RESET_ALL}/"
+                f"{Fore.YELLOW}s{Style.RESET_ALL}kip/"
+                f"{Fore.RED}n{Style.RESET_ALL}o]:  "
             ).strip().lower()
 
             if answer in ("n", "no"):
-                print(f"\n{Fore.RED}Stopped.{Style.RESET_ALL}")
+                print(f"\n  {Fore.RED}Stopped.{Style.RESET_ALL}\n")
                 return False
             if answer in ("s", "skip"):
                 print(f"  {Fore.YELLOW}Skipped{Style.RESET_ALL}\n")
                 continue
 
-        print(
-            f"[{i}/{total}] "
-            f"{Fore.CYAN}running:{Style.RESET_ALL} "
-            f"{Style.BRIGHT}{command}{Style.RESET_ALL}"
-        )
-
+        show_running(i, total, command)
         success, stdout, stderr = run_command(command, working_dir)
-
-        # Print output with indentation for readability
-        if stdout.strip():
-            for line in stdout.strip().split("\n"):
-                print(f"        {Style.DIM}{line}{Style.RESET_ALL}")
+        show_command_output(stdout)
 
         if success:
-            print(f"        {Fore.GREEN}✓ done{Style.RESET_ALL}")
+            show_command_ok()
             working_dir = extract_new_directory(command, working_dir)
         else:
-            print(f"        {Fore.RED}✗ failed{Style.RESET_ALL}")
-            if stderr.strip():
-                for line in stderr.strip().split("\n"):
-                    print(f"        {Fore.RED}{line}{Style.RESET_ALL}")
-
+            show_command_fail(stderr)
             all_ok = False
-            answer = input(
-                f"\n  Command failed. Continue anyway? "
-                f"[{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}n{Style.RESET_ALL}]: "
-            ).strip().lower()
-
-            if answer not in ("y", "yes"):
-                print(f"\n{Fore.RED}Stopped.{Style.RESET_ALL}")
+            if not ask_continue_after_failure():
                 return False
-
-        print()
 
     return all_ok
