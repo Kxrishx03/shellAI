@@ -157,7 +157,7 @@ def get_commands_ollama(
             f"{OLLAMA_BASE_URL}/api/generate",
             json=request_body,
             stream=True,
-            timeout=90
+            timeout=180
         )
 
         for line in response.iter_lines():
