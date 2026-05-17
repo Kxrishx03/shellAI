@@ -41,7 +41,7 @@ No API keys. No internet required after setup. No usage limits. No data sent any
 ```
 You type:   shellai initialize a react project with typescript
 
-  Step 1 — Checks local database instantly
+  Step 1 — Checks local SQLite database instantly
             ✓ Found in local database (confidence: 91%)
 
   Step 2 — Shows you the full plan
@@ -72,13 +72,31 @@ You type:   shellai initialize a react project with typescript
 
 ---
 
+## What's new in this version
+
+This release is a significant rewrite focused on speed, reliability, and simplicity:
+
+- **Removed scikit-learn entirely** — replaced with pure Python keyword search. No heavy ML dependency, faster cold start, identical results for this use case.
+- **SQLite replaces JSON files** — commands and pending entries now live in a proper database at `~/.shellai/commands.db`. Faster lookups, concurrent-safe, survives crashes cleanly.
+- **Two-level cache** — memory cache (instant, lives for the current session) sits in front of SQLite (fast, persists forever). Most repeated queries never touch disk.
+- **Intent detection** — questions, greetings, and non-command input are handled gracefully instead of being sent to Ollama.
+- **Streaming output** — you see Ollama tokens arrive as they're generated with an animated spinner. No more staring at a blank screen.
+- **Retry logic on timeout** — Ollama retries up to 3 times with a delay so a cold-starting model doesn't cause an immediate failure.
+- **`display.py`** — all terminal output is now routed through a single module for consistent, clean formatting.
+- **Rewritten install and uninstall scripts** — HTTPS clone (no GitHub login ever needed), automatic Ollama startup, PATH set correctly, full uninstall with optional model and Ollama removal.
+
+---
+
 ## Features
 
 - **Plain English input** — describe intent, not syntax
-- **Instant local database** — common tasks answered in milliseconds from a curated dataset
+- **Instant local database** — common tasks answered in milliseconds from SQLite
+- **Two-level cache** — memory cache + SQLite, same query never hits Ollama twice
 - **Local AI fallback** — powered by Ollama, runs entirely on your machine
+- **Streaming output** — watch tokens arrive in real time with a live spinner
 - **Fully offline** — no internet needed after the one-time model download
 - **No API keys** — ever
+- **Intent detection** — questions and greetings handled gracefully, not sent to the model
 - **Confirmation gate** — you see every command before anything runs
 - **Placeholder detection** — asks for your name, email, project name before running
 - **Edit mode** — pick exactly which commands from the plan to run
@@ -97,6 +115,8 @@ You type:   shellai initialize a react project with typescript
 | RAM | 4 GB available minimum |
 | Platform | Linux, macOS, or Windows WSL2 |
 
+No scikit-learn. No numpy. No heavy dependencies.
+
 ---
 
 ## Installation
@@ -110,24 +130,29 @@ curl -sSL https://raw.githubusercontent.com/Kxrishx03/shellai/master/install.sh 
 This single command will:
 - Check your Python version
 - Install Ollama if not already installed
-- Clone ShellAI and set up the Python environment
-- Create the `shellai` command so it works from anywhere
-- Pull the default AI model (phi3:mini, ~2.3 GB one-time download)
+- Clone ShellAI via HTTPS — **no GitHub account, password, or SSH key needed**
+- Set up the Python virtual environment and install dependencies
+- Create the `shellai` command so it works from anywhere in your terminal
+- Pull the default AI model (phi3:mini, ~2.3 GB, one-time download)
 
-After it finishes, restart your terminal and run:
+After it finishes, open a new terminal and run:
 
 ```bash
 shellai --help
 ```
 
 ShellAI runs a one-time setup wizard on first launch to ask for your OS
-and preferred model. That is it — you are ready to go.
+and preferred model. After that, it remembers your preferences.
+
+> **Prefer SSH?** If you already have GitHub SSH keys configured:
+> ```bash
+> curl -sSL https://raw.githubusercontent.com/Kxrishx03/shellai/master/install.sh | bash -s -- --ssh
+> ```
+> The installer will test your SSH connection first and give clear instructions if it fails.
 
 ---
 
 ### Manual installation
-
-If you prefer to install step by step:
 
 **Step 1 — Install Ollama**
 
@@ -135,7 +160,7 @@ If you prefer to install step by step:
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-> **WSL2 users:** If you see a `zstd` error, run this first:
+> **WSL2 users:** If you see a `zstd` error during install:
 > ```bash
 > sudo apt update && sudo apt install -y zstd
 > curl -fsSL https://ollama.com/install.sh | sh
@@ -148,7 +173,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 **Step 2 — Pull a model**
 
-Check your available RAM first:
+Check available RAM first:
 ```bash
 free -h   # look at the "available" column
 ```
@@ -156,13 +181,13 @@ free -h   # look at the "available" column
 Then pull the right model for your machine:
 
 ```bash
-# 4 GB+ available RAM — recommended for most machines
+# 4 GB+ RAM — recommended for most machines
 ollama pull phi3:mini
 
-# 8 GB+ available RAM — better quality responses
+# 8 GB+ RAM — better response quality
 ollama pull mistral:7b
 
-# Minimal RAM — fastest but lower quality
+# Under 4 GB RAM — lightest option
 ollama pull tinyllama
 ```
 
@@ -176,20 +201,18 @@ source venv/bin/activate
 pip install -e .
 ```
 
-**Step 4 — Start Ollama and run ShellAI**
+**Step 4 — Start Ollama and run**
 
 ```bash
-# Ollama usually starts automatically after install
-# If not, start it manually:
+# Start Ollama if not already running
 ollama serve &
 
-# Run ShellAI
 shellai --help
 ```
 
 ---
 
-### Install directly from GitHub via pip
+### Install via pip
 
 ```bash
 pip install git+https://github.com/Kxrishx03/shellai.git
@@ -197,15 +220,38 @@ pip install git+https://github.com/Kxrishx03/shellai.git
 
 ---
 
-## Ollama already running error
-
-If you see `address already in use` when starting Ollama, it is already running
-as a system service. This is completely normal — just continue:
+## Uninstalling
 
 ```bash
-# Verify Ollama is running
+curl -sSL https://raw.githubusercontent.com/Kxrishx03/shellai/master/uninstall.sh | bash
+```
+
+The uninstaller asks for confirmation before removing anything and lets you keep
+your database and profile if you plan to reinstall later.
+
+**Optional flags:**
+
+```bash
+# Also delete the AI model (~2.3 GB freed)
+bash uninstall.sh --remove-model
+
+# Also remove Ollama from your system entirely
+bash uninstall.sh --remove-ollama
+
+# Both at once
+bash uninstall.sh --remove-model --remove-ollama
+```
+
+---
+
+## Ollama is already running
+
+If you see `address already in use` when starting Ollama, it is running as a
+system service. This is normal — just verify and continue:
+
+```bash
 curl http://localhost:11434
-# Should return: Ollama is running
+# Expected: Ollama is running
 ```
 
 ---
@@ -226,6 +272,7 @@ shellai configure git username and email
 shellai create and switch to a new branch called feature/auth
 shellai merge branch feature/login into main with message "add login"
 shellai undo the last commit but keep the changes
+shellai show all branches including remote
 ```
 
 **Project setup**
@@ -234,6 +281,7 @@ shellai initialize a react project with typescript
 shellai initialize a react project with typescript and tailwind
 shellai set up a python virtual environment and install django
 shellai create a new node project with express and nodemon
+shellai scaffold a fastapi project with uvicorn
 ```
 
 **File management**
@@ -254,6 +302,7 @@ shellai build a docker image called myapp
 shellai run docker compose in the background
 shellai stop all running docker containers
 shellai remove all unused docker images
+shellai show logs for a running container
 ```
 
 **Database**
@@ -261,6 +310,7 @@ shellai remove all unused docker images
 shellai install postgresql
 shellai create a postgresql database called myapp
 shellai dump the myapp database to a backup file
+shellai restore a postgresql database from backup
 ```
 
 **System**
@@ -268,34 +318,37 @@ shellai dump the myapp database to a backup file
 shellai check which process is using port 3000 and kill it
 shellai check available disk space
 shellai generate an ssh key pair for github
+shellai show cpu and memory usage
 ```
 
 ---
 
-## All Flags
+## All flags
 
 | Flag | Description |
 |------|-------------|
 | `--careful` | Confirm each individual command before it runs |
 | `--setup` | Re-run the first-time setup wizard |
 | `--review` | Review and approve pending dataset entries |
-| `--set-model <name>` | Switch Ollama model |
+| `--stats` | Show database statistics and most-used commands |
+| `--export-seed` | Export your database to `seed.sql` for sharing |
+| `--set-model <name>` | Switch Ollama model (e.g. `mistral:7b`) |
 | `--help` | Show help message |
 | `--version` | Show version number |
 
 ---
 
-## Confirmation Options
+## Confirmation options
 
 When ShellAI shows you the plan, you have three choices:
 
-| Type | What happens |
-|------|-------------|
+| Input | What happens |
+|-------|-------------|
 | `y` or `yes` | Run all commands |
 | `n` or `no` | Cancel everything |
 | `e` or `edit` | Choose which commands to run |
 
-**Edit mode example:**
+**Edit mode:**
 ```
 Run 4 commands? [yes / no / edit]: e
 
@@ -312,10 +365,7 @@ Enter the numbers of commands to run (e.g. 1 3 4), or 'all':
 ## Changing models
 
 ```bash
-# Pull a new model first
 ollama pull mistral:7b
-
-# Tell ShellAI to use it
 shellai --set-model mistral:7b
 ```
 
@@ -327,37 +377,32 @@ shellai --set-model mistral:7b
 | `mistral:7b` | 6–8 GB | Medium | Better quality |
 | `codellama:7b` | 6–8 GB | Medium | Better for code tasks |
 
+> **First run is slow.** On cold start, phi3:mini can take 60–120 seconds to load
+> into memory. ShellAI retries automatically up to 3 times — you will see a
+> `Retrying (2/3)…` message rather than an immediate failure.
+> Pre-warm if you're impatient: `ollama run phi3:mini 'hi'`
+
 ---
 
 ## Safety
 
-ShellAI has a three-level safety system that runs on every command
-before you are even asked to confirm.
+ShellAI runs a three-level safety check on every command before you are asked to confirm.
 
 **Level 1 — Blocked (never runs)**
-Commands that could destroy your OS or expose security risks
-are refused entirely regardless of confirmation.
-
-Examples of what is blocked:
-- `rm -rf /` — deletes the entire operating system
-- Fork bombs — crash your system
-- Writing directly to disk devices
-- Piping internet content directly to bash
+Commands that could destroy your system or expose security risks are refused
+regardless of confirmation. Examples: `rm -rf /`, fork bombs, writing directly
+to disk devices, piping internet content to bash.
 
 **Level 2 — Warning (requires typing `yes` in full)**
-Destructive but legitimate commands get a red warning and
-require you to type the full word `yes` before running.
-
-Examples: `rm -rf ./old-project`, `DROP DATABASE`, `mkfs`
+Destructive but legitimate commands get a red warning and require the full word
+`yes` before running. Examples: `rm -rf ./old-project`, `DROP DATABASE`, `mkfs`.
 
 **Level 3 — Notice (informational)**
-Commands using `sudo` or touching sensitive system paths
-show a dim notice so you are aware.
+Commands using `sudo` or touching sensitive paths show a dim notice.
 
 **Placeholder validation**
-When a command needs your email, port number, or project name,
-ShellAI validates the value before proceeding — it will not let
-you enter a file path where a name is expected.
+When a command needs your email, port number, or project name, ShellAI validates
+the value before proceeding so you can't accidentally pass the wrong type.
 
 ---
 
@@ -366,39 +411,56 @@ you enter a file path where a name is expected.
 ```
 You ask something not in the local database
             ↓
-Ollama generates the answer
+Ollama generates the answer (streamed to your terminal)
             ↓
 ShellAI saves it to a pending queue automatically
             ↓
 You run: shellai --review
             ↓
-You approve or reject each pending entry
+You approve or reject each entry
             ↓
-Approved entries join the local database permanently
+Approved entries join the SQLite database permanently
             ↓
-Same task asked next time — instant answer, no model needed
+Same task asked again — instant answer, no model needed
 ```
 
-The more you use ShellAI, the faster it becomes.
+The more you use ShellAI, the more queries it answers from the local database
+without needing the AI at all. Run `shellai --stats` to see how many commands
+are stored and which ones get used most.
 
 ```bash
-shellai --review
+shellai --review    # review pending entries
+shellai --stats     # database statistics
 ```
 
 ---
 
 ## Troubleshooting
 
+**`ModuleNotFoundError: No module named 'db'` (or any local module)**
+
+The package was installed without all modules listed. Reinstall:
+```bash
+cd shellai
+source venv/bin/activate
+pip install -e .
+```
+
 **`Ollama is not running`**
 ```bash
 ollama serve &
-# or on Linux:
+# or on Linux with systemd:
 sudo systemctl start ollama
 ```
 
-**`address already in use` when starting Ollama**
-Ollama is already running as a system service. Run `curl http://localhost:11434`
-to confirm. If it says `Ollama is running` you are fine — just use ShellAI normally.
+**`Ollama timed out` on first use**
+
+The model is still loading into memory. ShellAI retries automatically.
+If all retries fail, pre-warm the model and try again:
+```bash
+ollama run phi3:mini 'hi'
+# wait for a response, then retry your command
+```
 
 **`Model not downloaded`**
 ```bash
@@ -409,6 +471,7 @@ ollama pull phi3:mini
 ```bash
 source venv/bin/activate
 pip install -e .
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 **`zstd` error during Ollama install on WSL2**
@@ -418,16 +481,18 @@ curl -fsSL https://ollama.com/install.sh | sh
 ```
 
 **Model returns invalid JSON**
-Switch to a larger model — bigger models follow format instructions better:
+
+Larger models follow format instructions more reliably:
 ```bash
 shellai --set-model mistral:7b
 ```
 
 **Responses are slow**
-This is normal for CPU-only machines running local LLMs.
-- Use a smaller model: `shellai --set-model tinyllama`
-- Run `shellai --review` regularly — approved entries answer instantly next time
-- The more you use ShellAI, the more queries hit the local database
+
+This is normal for CPU-only machines running local AI models.
+- Switch to a smaller model: `shellai --set-model tinyllama`
+- Run `shellai --review` regularly to grow your local database — approved entries
+  answer instantly on future queries with no model involved at all.
 
 ---
 
@@ -445,21 +510,25 @@ pytest tests/ -v --cov=. --cov-report=term-missing
 
 ```
 shellai/
-├── main.py              Entry point and orchestrator
-├── ai.py                Routes queries to local database or Ollama
-├── ollama_engine.py     Talks to local Ollama server
-├── local_engine.py      TF-IDF search over the command dataset
-├── placeholders.py      Detects and fills in {{PLACEHOLDER}} tokens
-├── profiles.py          Stores OS and model preferences
+├── main.py              Entry point and CLI orchestrator
+├── ai.py                Routes queries: memory cache → SQLite → Ollama
+├── db.py                SQLite database, two-level cache, pending queue
+├── ollama_engine.py     Ollama streaming client with retry logic
+├── intent.py            Detects questions, greetings, non-command input
+├── display.py           All terminal output — consistent formatting
+├── placeholders.py      Detects and fills {{PLACEHOLDER}} tokens
+├── profiles.py          OS and model preferences
 ├── confirm.py           Shows plan and handles confirmation
-├── executor.py          Runs commands via subprocess
-├── config.py            Central configuration and paths
-├── dataset_builder.py   Manages the pending review queue
+├── executor.py          Runs commands via subprocess with live output
 ├── safety.py            Three-level safety checking system
-├── install.sh           One-line installer script
+├── dataset_builder.py   Pending review queue management
+├── config.py            Paths, thresholds, constants
+├── install.sh           One-line installer (HTTPS, no login needed)
+├── uninstall.sh         Clean uninstaller with optional flags
 │
 ├── data/
-│   └── commands.json    Curated command dataset (grows over time)
+│   ├── commands.json    Curated seed dataset
+│   └── seed.sql         Pre-built database for instant first run
 │
 └── tests/
     ├── test_local_engine.py
@@ -473,21 +542,20 @@ shellai/
 
 ## Contributing
 
-Contributions are welcome and appreciated.
+Contributions are welcome.
 
 **Adding commands to the dataset**
 
-The fastest way to improve ShellAI for everyone is to add entries
-to `data/commands.json`. Follow the existing format:
+The fastest way to help is to add entries to `data/commands.json`:
 
 ```json
 {
   "intent": "description of what the user wants to do",
-  "tags": ["relevant", "keywords", "for", "matching"],
+  "tags": ["relevant", "keywords"],
   "os": "all",
   "commands": [
     {
-      "command": "the exact command to run",
+      "command": "the exact shell command",
       "explanation": "one sentence explaining what this does"
     }
   ],
@@ -495,18 +563,18 @@ to `data/commands.json`. Follow the existing format:
 }
 ```
 
-Use `"os": "all"` for cross-platform commands.
-Use `"os": "ubuntu"`, `"os": "macos"` etc. for platform-specific ones.
+Use `"os": "all"` for cross-platform commands, `"os": "ubuntu"` or
+`"os": "macos"` for platform-specific ones.
 
-For commands needing user-specific values, use placeholders:
+For commands that need user-specific values, use placeholders:
 ```json
 "command": "git config --global user.name \"{{YOUR_NAME}}\""
 ```
 
-**Before submitting a pull request**
+**Before opening a pull request:**
 1. Run `pytest tests/ -v` — all tests must pass
 2. Add tests for any new functionality
-3. Never commit API keys, credentials, or personal data
+3. Never commit credentials, API keys, or personal data
 
 ---
 
@@ -514,8 +582,8 @@ For commands needing user-specific values, use placeholders:
 
 - All queries go to your local Ollama model — nothing leaves your machine
 - No telemetry, no analytics, no usage tracking of any kind
-- Your command history stays on your machine in `~/.shellai/`
-- No accounts, no sign-ups, no external servers
+- Your database and profile live at `~/.shellai/` on your own machine
+- No accounts, no sign-ups, no external servers ever
 
 ---
 
@@ -527,8 +595,8 @@ MIT — do whatever you want with it.
 
 ## Acknowledgements
 
-Built with [Ollama](https://ollama.com), [scikit-learn](https://scikit-learn.org),
-[colorama](https://pypi.org/project/colorama/), and [requests](https://pypi.org/project/requests/).
+Built with [Ollama](https://ollama.com), [colorama](https://pypi.org/project/colorama/),
+and [requests](https://pypi.org/project/requests/).
 
 Inspired by the universal developer experience of forgetting what flags `tar` takes.
 
